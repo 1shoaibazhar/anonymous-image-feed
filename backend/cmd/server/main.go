@@ -55,6 +55,7 @@ func main() {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/images", imageHandler.List)
+		r.Get("/tags", imageHandler.ListTags)
 		r.Post("/upload", uploadHandler.Create)
 	})
 

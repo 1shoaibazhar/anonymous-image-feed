@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Feed } from './components/Feed'
 import { UploadForm } from './components/UploadForm'
+import { TagFilter } from './components/TagFilter'
 import { useLiveFeed } from './hooks/useLiveFeed'
 
 function App() {
   const [refreshKey, setRefreshKey] = useState(0)
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
 
   useLiveFeed(() => setRefreshKey((k) => k + 1))
 
@@ -14,7 +16,8 @@ function App() {
         <h1 className="text-2xl font-semibold text-gray-800">Anon Image Feed</h1>
       </header>
       <UploadForm onUploadSuccess={() => setRefreshKey((k) => k + 1)} />
-      <Feed refreshKey={refreshKey} />
+      <TagFilter selectedTags={selectedTags} onChange={setSelectedTags} />
+      <Feed refreshKey={refreshKey} tags={selectedTags} />
     </div>
   )
 }

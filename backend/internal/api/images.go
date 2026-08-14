@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"imagefeed/internal/repository"
@@ -25,7 +26,16 @@ type imageResponse struct {
 }
 
 func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
-	images, err := h.repo.ListImages(r.Context())
+	tags := []string{}
+	if raw := r.URL.Query().Get("tags"); raw != "" {
+		for _, t := range strings.Split(raw, ",") {
+			if trimmed := strings.TrimSpace(t); trimmed != "" {
+				tags = append(tags, trimmed)
+			}
+		}
+	}
+
+	images, err := h.repo.ListImages(r.Context(), tags)
 	if err != nil {
 		http.Error(w, "failed to load images", http.StatusInternalServerError)
 		return
@@ -44,4 +54,14 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+func (h *ImageHandler) ListTags(w http.ResponseWriter, r *http.Request) {
+	tags, err := h.repo.ListTags(r.Context())
+	if err != nil {
+		http.Error(w, "failed to load tags", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tags)
 }

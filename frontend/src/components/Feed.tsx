@@ -4,20 +4,21 @@ import type { ImageItem } from '../types/image'
 
 interface FeedProps {
   refreshKey: number
+  tags: string[]
 }
 
-export function Feed({ refreshKey }: FeedProps) {
+export function Feed({ refreshKey, tags }: FeedProps) {
   const [images, setImages] = useState<ImageItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
-    fetchImages()
+    fetchImages(tags)
       .then(setImages)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
-  }, [refreshKey])
+  }, [refreshKey, tags])
 
   if (loading) {
     return <p className="text-center text-gray-500 mt-8">Loading...</p>
