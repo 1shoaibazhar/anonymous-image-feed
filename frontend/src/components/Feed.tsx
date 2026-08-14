@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchImages, API_BASE_URL } from '../api/images'
 import type { ImageItem } from '../types/image'
+import { Modal } from './Modal'
 
 interface FeedProps {
   refreshKey: number
@@ -11,6 +12,7 @@ export function Feed({ refreshKey, tags }: FeedProps) {
   const [images, setImages] = useState<ImageItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -35,7 +37,11 @@ export function Feed({ refreshKey, tags }: FeedProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4">
       {images.map((image) => (
-        <div key={image.id} className="bg-white rounded-lg shadow overflow-hidden">
+        <div
+          key={image.id}
+          className="bg-white rounded-lg shadow overflow-hidden cursor-pointer"
+          onClick={() => setSelectedImage(image)}
+        >
           <img
             src={`${API_BASE_URL}${image.url}`}
             alt={image.title}
@@ -53,6 +59,23 @@ export function Feed({ refreshKey, tags }: FeedProps) {
           </div>
         </div>
       ))}
+      {selectedImage && (
+        <Modal onClose={() => setSelectedImage(null)} panelClassName="max-w-3xl max-h-[90vh] overflow-auto">
+          <img
+            src={`${API_BASE_URL}${selectedImage.url}`}
+            alt={selectedImage.title}
+            className="w-full h-auto max-h-[70vh] object-contain rounded-t-lg"
+          />
+          <div className="p-4">
+            <p className="text-gray-800">
+              <span className="font-semibold">Title:</span> {selectedImage.title}
+            </p>
+            <p className="text-gray-800 mt-1">
+              <span className="font-semibold">Tags:</span> {selectedImage.tags.join(', ')}
+            </p>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
