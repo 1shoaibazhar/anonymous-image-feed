@@ -116,6 +116,7 @@ func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ID:        id,
 		Title:     title,
 		Tags:      tags,
+		URL:       relativePath,
 		CreatedAt: createdAt.Format(time.RFC3339),
 	})
 }

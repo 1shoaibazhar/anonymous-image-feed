@@ -20,6 +20,7 @@ type imageResponse struct {
 	ID        string   `json:"id"`
 	Title     string   `json:"title"`
 	Tags      []string `json:"tags"`
+	URL       string   `json:"url"`
 	CreatedAt string   `json:"created_at"`
 }
 
@@ -36,6 +37,7 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 			ID:        img.ID,
 			Title:     img.Title,
 			Tags:      img.Tags,
+			URL:       img.FilePath,
 			CreatedAt: img.CreatedAt.Format(time.RFC3339),
 		})
 	}
