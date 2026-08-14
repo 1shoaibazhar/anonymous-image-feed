@@ -42,27 +42,37 @@ export function UploadForm({ onUploadSuccess }: UploadFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 bg-white border-b flex flex-wrap gap-3 items-start">
-      <input
-        id="file-input"
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-        className="text-sm"
-      />
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+      <h2 className="text-lg font-semibold text-gray-800">Upload image</h2>
+      <div className="flex flex-col gap-1">
+        <input
+          id="file-input"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          className="hidden"
+        />
+        <label
+          htmlFor="file-input"
+          className="cursor-pointer inline-block w-fit bg-gray-100 hover:bg-gray-200 border border-gray-300 text-gray-700 px-4 py-1.5 rounded text-sm"
+        >
+          Choose file
+        </label>
+        <span className="text-sm text-gray-500">{file ? file.name : 'No file chosen'}</span>
+      </div>
       <input
         type="text"
         placeholder="Title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="border rounded px-3 py-1.5 text-sm flex-1 min-w-[150px]"
+        className="border rounded px-3 py-1.5 text-sm"
       />
       <input
         type="text"
         placeholder="Tags (comma separated)"
         value={tags}
         onChange={(e) => setTags(e.target.value)}
-        className="border rounded px-3 py-1.5 text-sm flex-1 min-w-[150px]"
+        className="border rounded px-3 py-1.5 text-sm"
       />
       <button
         type="submit"
@@ -71,7 +81,7 @@ export function UploadForm({ onUploadSuccess }: UploadFormProps) {
       >
         {submitting ? 'Uploading...' : 'Upload'}
       </button>
-      {error && <p className="w-full text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
     </form>
   )
 }

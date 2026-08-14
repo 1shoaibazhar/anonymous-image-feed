@@ -15,7 +15,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Hub keeps track of connected WebSocket clients and broadcasts msgs to all
 type Hub struct {
 	mu      sync.Mutex
 	clients map[*client]bool
@@ -47,7 +46,6 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	go h.readPump(c)
 }
 
-// readPump's only real job is detecting disconnects, we don't expect the frontend to send us anything meaningful yet
 func (h *Hub) readPump(c *client) {
 	defer h.removeClient(c)
 	for {
@@ -75,7 +73,6 @@ func (h *Hub) removeClient(c *client) {
 	}
 }
 
-// Broadcast sends msg to every connected client. A client that isn't keeping up gets dropped rather than allowed to block everyone else.
 func (h *Hub) Broadcast(msg []byte) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
