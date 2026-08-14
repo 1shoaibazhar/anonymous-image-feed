@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"imagefeed/internal/repository"
+	"imagefeed/internal/ws"
 )
 
 const (
@@ -28,10 +29,11 @@ var allowedMimeTypes = map[string]string{
 
 type UploadHandler struct {
 	repo *repository.ImageRepository
+	hub  *ws.Hub
 }
 
-func NewUploadHandler(repo *repository.ImageRepository) *UploadHandler {
-	return &UploadHandler{repo: repo}
+func NewUploadHandler(repo *repository.ImageRepository, hub *ws.Hub) *UploadHandler {
+	return &UploadHandler{repo: repo, hub: hub}
 }
 
 func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -110,15 +112,21 @@ func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(imageResponse{
+	created := imageResponse{
 		ID:        id,
 		Title:     title,
 		Tags:      tags,
 		URL:       relativePath,
 		CreatedAt: createdAt.Format(time.RFC3339),
-	})
+	}
+
+	if msg, err := json.Marshal(wsMessage{Type: "image.created", Payload: created}); err == nil {
+		h.hub.Broadcast(msg)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(created)
 }
 
 func parseTags(raw string) []string {

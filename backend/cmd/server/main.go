@@ -13,6 +13,7 @@ import (
 
 	"imagefeed/internal/api"
 	"imagefeed/internal/repository"
+	"imagefeed/internal/ws"
 )
 
 func main() {
@@ -34,7 +35,8 @@ func main() {
 
 	imageRepo := repository.NewImageRepository(pool)
 	imageHandler := api.NewImageHandler(imageRepo)
-	uploadHandler := api.NewUploadHandler(imageRepo)
+	hub := ws.NewHub()
+	uploadHandler := api.NewUploadHandler(imageRepo, hub)
 
 	r := chi.NewRouter()
 
@@ -55,6 +57,8 @@ func main() {
 		r.Get("/images", imageHandler.List)
 		r.Post("/upload", uploadHandler.Create)
 	})
+
+	r.Get("/ws", hub.ServeWS)
 
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
