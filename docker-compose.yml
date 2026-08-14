@@ -34,9 +34,24 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-imagefeed}:${POSTGRES_PASSWORD:-imagefeed}@db:5432/${POSTGRES_DB:-imagefeed}?sslmode=disable
     ports:
       - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - uploads-data:/app/uploads
     depends_on:
       migrate:
         condition: service_completed_successfully
 
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
 volumes:
   db-data:
+  uploads-data:
