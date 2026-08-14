@@ -34,6 +34,7 @@ func main() {
 
 	imageRepo := repository.NewImageRepository(pool)
 	imageHandler := api.NewImageHandler(imageRepo)
+	uploadHandler := api.NewUploadHandler(imageRepo)
 
 	r := chi.NewRouter()
 
@@ -52,7 +53,10 @@ func main() {
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/images", imageHandler.List)
+		r.Post("/upload", uploadHandler.Create)
 	})
+
+	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
 	log.Println("server listening on :8080")
 	if err := http.ListenAndServe(":8080", r); err != nil {
