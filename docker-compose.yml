@@ -30,6 +30,8 @@ services:
   backend:
     build:
       context: ./backend
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-imagefeed}:${POSTGRES_PASSWORD:-imagefeed}@db:5432/${POSTGRES_DB:-imagefeed}?sslmode=disable
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
