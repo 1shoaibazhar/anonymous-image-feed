@@ -4,7 +4,6 @@ CREATE TABLE images (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   file_path TEXT NOT NULL,
-  thumb_path TEXT NOT NULL,
   mime_type TEXT NOT NULL,
   width INT,
   height INT,
