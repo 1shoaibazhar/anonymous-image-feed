@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 
 	"imagefeed/internal/api"
 	"imagefeed/internal/repository"
@@ -33,10 +34,26 @@ func main() {
 	}
 	log.Println("connected to database")
 
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379"
+	}
+	redisOpts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		log.Fatalf("parse REDIS_URL: %v", err)
+	}
+
+	rdb := redis.NewClient(redisOpts)
+	defer rdb.Close()
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		log.Fatalf("ping redis: %v", err)
+	}
+	log.Println("connected to redis")
+
 	imageRepo := repository.NewImageRepository(pool)
-	imageHandler := api.NewImageHandler(imageRepo)
+	imageHandler := api.NewImageHandler(imageRepo, rdb)
 	hub := ws.NewHub()
-	uploadHandler := api.NewUploadHandler(imageRepo, hub)
+	uploadHandler := api.NewUploadHandler(imageRepo, hub, rdb)
 
 	r := chi.NewRouter()
 

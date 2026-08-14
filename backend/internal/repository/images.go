@@ -19,7 +19,6 @@ type NewImage struct {
 	ID        string
 	Title     string
 	FilePath  string
-	ThumbPath string
 	MimeType  string
 	SizeBytes int64
 	Tags      []string
@@ -103,10 +102,10 @@ func (r *ImageRepository) CreateImage(ctx context.Context, img NewImage) (time.T
 
 	var createdAt time.Time
 	err = tx.QueryRow(ctx, `
-		INSERT INTO images (id, title, file_path, thumb_path, mime_type, size_bytes, status)
-		VALUES ($1, $2, $3, $4, $5, $6, 'ready')
+		INSERT INTO images (id, title, file_path, mime_type, size_bytes, status)
+		VALUES ($1, $2, $3, $4, $5, 'ready')
 		RETURNING created_at
-	`, img.ID, img.Title, img.FilePath, img.ThumbPath, img.MimeType, img.SizeBytes).Scan(&createdAt)
+	`, img.ID, img.Title, img.FilePath, img.MimeType, img.SizeBytes).Scan(&createdAt)
 	if err != nil {
 		return time.Time{}, err
 	}

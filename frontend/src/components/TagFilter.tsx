@@ -4,14 +4,15 @@ import { fetchTags } from '../api/images'
 interface TagFilterProps {
   selectedTags: string[]
   onChange: (tags: string[]) => void
+  refreshKey: number
 }
 
-export function TagFilter({ selectedTags, onChange }: TagFilterProps) {
+export function TagFilter({ selectedTags, onChange, refreshKey }: TagFilterProps) {
   const [allTags, setAllTags] = useState<string[]>([])
 
   useEffect(() => {
     fetchTags().then(setAllTags).catch(() => setAllTags([]))
-  }, [])
+  }, [refreshKey])
 
   if (allTags.length === 0) {
     return null

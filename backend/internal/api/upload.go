@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 
 	"imagefeed/internal/repository"
 	"imagefeed/internal/ws"
@@ -30,10 +31,11 @@ var allowedMimeTypes = map[string]string{
 type UploadHandler struct {
 	repo *repository.ImageRepository
 	hub  *ws.Hub
+	rdb  *redis.Client
 }
 
-func NewUploadHandler(repo *repository.ImageRepository, hub *ws.Hub) *UploadHandler {
-	return &UploadHandler{repo: repo, hub: hub}
+func NewUploadHandler(repo *repository.ImageRepository, hub *ws.Hub, rdb *redis.Client) *UploadHandler {
+	return &UploadHandler{repo: repo, hub: hub, rdb: rdb}
 }
 
 func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +104,6 @@ func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ID:        id,
 		Title:     title,
 		FilePath:  relativePath,
-		ThumbPath: relativePath, // no real thumbnail yet, same file for both
 		MimeType:  mimeType,
 		SizeBytes: size,
 		Tags:      tags,
@@ -111,6 +112,8 @@ func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to save image record", http.StatusInternalServerError)
 		return
 	}
+
+	h.rdb.Del(r.Context(), "images:", "tags:all")
 
 	created := imageResponse{
 		ID:        id,

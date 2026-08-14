@@ -23,7 +23,7 @@ function App() {
           Upload
         </button>
       </header>
-      <TagFilter selectedTags={selectedTags} onChange={setSelectedTags} />
+      <TagFilter selectedTags={selectedTags} onChange={setSelectedTags} refreshKey={refreshKey} />
       <Feed refreshKey={refreshKey} tags={selectedTags} />
       {uploadOpen && (
         <Modal onClose={() => setUploadOpen(false)}>
