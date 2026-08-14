@@ -1,0 +1,17 @@
+# Go
+backend/bin/
+*.exe
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Env
+.env
+.env.local
+
+# Local upload storage (phase 1 stores files on disk, don't commit them)
+backend/uploads/
+
+# OS
+.DS_Store
