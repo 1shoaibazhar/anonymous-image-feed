@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	maxUploadSize = 10 << 20 // 10 MB
+	maxUploadSize = 5 << 20 // 5 MB
 	uploadsDir    = "./uploads"
 )
 
