@@ -26,7 +26,7 @@ The same cursor is what powers infinite scroll on the frontend too, for a contin
 
 ## Image normalization
 
-Every upload gets decoded, resized to a fixed 1080x1080, and re-encoded as JPEG at quality 85, regardless of the original format (jpeg/png/webp are all accepted in). This keeps the feed grid uniform and keeps storage and bandwidth predictable, instead of one person uploading a 40MB PNG and blowing up disk usage.
+Every upload gets decoded, resized to a fixed 1080x1080, and re-encoded as JPEG at quality 85, regardless of the original format (jpeg/png/webp are all accepted in). This keeps the feed grid uniform and keeps storage and bandwidth predictable, no matter what someone uploads. Uploads are also capped at 5MB at the handler level, before normalization even runs, so nothing oversized gets that far in the first place.
 
 The honest caveat is it resizes to fill the square without preserving aspect ratio, so a wide landscape photo gets visibly squashed. A center-crop would look better and it's on the list below, I just wanted normalization working end to end before polishing how it crops.
 
