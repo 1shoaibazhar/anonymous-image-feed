@@ -1,6 +1,6 @@
 # Anonymous Image feed
 
-Anonymous image upload site with a live feed. React + TypeScript frontend, Go + Chi backend.
+Anonymous image upload site with a live feed. Anyone can post a picture with a title and a few tags, no account needed, and everyone browsing the feed sees it appear in real time. React + TypeScript frontend, Go + Chi backend, Postgres for storage, and Redis for caching.
 
 ## Features
 - Anonymous image uploads (jpeg, png, webp), normalized server side to a standard size and JPEG quality
@@ -9,8 +9,8 @@ Anonymous image upload site with a live feed. React + TypeScript frontend, Go + 
 - Redis backed response caching for the images and tags endpoints
 
 ## Structure
-- `backend/` — Go API (Chi router, REST + WebSocket)
-- `frontend/` — React + TypeScript (Vite)
+- `backend/` - Go API (Chi router, REST + WebSocket)
+- `frontend/` - React + TypeScript (Vite)
 
 ## Setup
 
