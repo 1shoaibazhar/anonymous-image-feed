@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchImages, API_BASE_URL } from '../api/images'
 import type { ImageItem } from '../types/image'
 import { Modal } from './Modal'
@@ -15,6 +15,7 @@ export function Feed({ refreshKey, tags }: FeedProps) {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -27,7 +28,7 @@ export function Feed({ refreshKey, tags }: FeedProps) {
       .finally(() => setLoading(false))
   }, [refreshKey, tags])
 
-  function loadMore() {
+  const loadMore = useCallback(() => {
     if (!nextCursor || loadingMore) return
     setLoadingMore(true)
     fetchImages(tags, nextCursor)
@@ -37,7 +38,20 @@ export function Feed({ refreshKey, tags }: FeedProps) {
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoadingMore(false))
-  }
+  }, [nextCursor, loadingMore, tags])
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!nextCursor || !sentinel) return
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadMore()
+      }
+    })
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [nextCursor, loadMore])
 
   if (loading) {
     return <p className="text-center text-gray-500 mt-8">Loading...</p>
@@ -96,15 +110,9 @@ export function Feed({ refreshKey, tags }: FeedProps) {
       )}
     </div>
     {nextCursor && (
-      <p className="text-center pb-8">
-        <button
-          onClick={loadMore}
-          disabled={loadingMore}
-          className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50"
-        >
-          {loadingMore ? 'Loading...' : 'Load more'}
-        </button>
-      </p>
+      <div ref={sentinelRef} className="text-center pb-8">
+        {loadingMore && <p className="text-gray-500">Loading...</p>}
+      </div>
     )}
     </div>
   )

@@ -10,9 +10,22 @@ const sampleImages: ImageItem[] = [
   { id: '2', title: 'Second', tags: [], url: '/uploads/2.jpg', created_at: 'now' },
 ]
 
+let intersectionCallback: IntersectionObserverCallback = () => {}
+
+class MockIntersectionObserver {
+  constructor(callback: IntersectionObserverCallback) {
+    intersectionCallback = callback
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 describe('Feed', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    intersectionCallback = () => {}
+    window.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver
   })
 
   it('shows a loading state before images resolve', () => {
@@ -75,21 +88,19 @@ describe('Feed', () => {
     expect(fetchSpy).toHaveBeenLastCalledWith(['cats'])
   })
 
-  it('shows a load more button when there is a next cursor, and fetches the next page on click', async () => {
+  it('fetches the next page once the sentinel scrolls into view, and stops once there is no next cursor', async () => {
     const fetchSpy = vi
       .spyOn(api, 'fetchImages')
       .mockResolvedValueOnce({ images: [sampleImages[0]], next_cursor: 'cursor1' })
       .mockResolvedValueOnce({ images: [sampleImages[1]], next_cursor: null })
-    const user = userEvent.setup()
 
     render(<Feed refreshKey={0} tags={[]} />)
     await screen.findByText('First')
 
-    const loadMoreButton = screen.getByRole('button', { name: 'Load more' })
-    await user.click(loadMoreButton)
+    intersectionCallback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
 
     expect(await screen.findByText('Second')).toBeInTheDocument()
     expect(fetchSpy).toHaveBeenLastCalledWith([], 'cursor1')
-    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
   })
 })
