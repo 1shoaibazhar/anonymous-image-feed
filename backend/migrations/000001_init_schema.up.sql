@@ -23,5 +23,5 @@ CREATE TABLE image_tags (
   PRIMARY KEY (image_id, tag_id)
 );
 
-CREATE INDEX idx_images_created_at ON images (created_at DESC);
+CREATE INDEX idx_images_created_at ON images (created_at DESC, id DESC);
 CREATE INDEX idx_image_tags_tag_id ON image_tags (tag_id);
