@@ -13,6 +13,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"imagefeed/internal/api"
+	"imagefeed/internal/api/docs"
 	"imagefeed/internal/repository"
 	"imagefeed/internal/ws"
 )
@@ -77,6 +78,9 @@ func main() {
 	})
 
 	r.Get("/ws", hub.ServeWS)
+
+	r.Get("/openapi.yaml", docs.ServeSpec)
+	r.Get("/docs", docs.ServePage)
 
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 

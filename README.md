@@ -26,6 +26,7 @@ docker compose up
 This starts Postgres, runs migrations, and starts the backend and frontend. Once it's up:
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8080
+- API docs (Swagger UI): http://localhost:8080/docs
 
 Edit `.env` first if you need different ports or Postgres credentials (defaults work out of the box).
 
@@ -45,6 +46,7 @@ Prerequisites: Go 1.25+, Node 24, Postgres, Redis, and [golang-migrate](https://
    REDIS_URL="redis://localhost:6379" \
    go run ./cmd/server
    ```
+   API docs (Swagger UI) are then available at http://localhost:8080/docs.
 4. Run the frontend:
    ```
    cd frontend
