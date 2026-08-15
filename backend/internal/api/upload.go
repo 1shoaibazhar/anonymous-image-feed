@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
+	"imagefeed/internal/imaging"
 	"imagefeed/internal/repository"
 	"imagefeed/internal/ws"
 )
@@ -21,11 +22,10 @@ const (
 	uploadsDir    = "./uploads"
 )
 
-var allowedMimeTypes = map[string]string{
-	"image/jpeg": ".jpg",
-	"image/png":  ".png",
-	"image/webp": ".webp",
-	"image/gif":  ".gif",
+var allowedMimeTypes = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/webp": true,
 }
 
 type UploadHandler struct {
@@ -68,9 +68,8 @@ func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	mimeType := http.DetectContentType(buf[:n])
 
-	ext, ok := allowedMimeTypes[mimeType]
-	if !ok {
-		http.Error(w, "unsupported file type, only jpeg, png, webp, and gif are allowed", http.StatusBadRequest)
+	if !allowedMimeTypes[mimeType] {
+		http.Error(w, "unsupported file type, only jpeg, png and webp are allowed", http.StatusBadRequest)
 		return
 	}
 
@@ -84,16 +83,15 @@ func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := uuid.New().String()
-	filename := id + ext
-	dst, err := os.Create(filepath.Join(uploadsDir, filename))
+	normalized, err := imaging.Normalize(file)
 	if err != nil {
-		http.Error(w, "failed to save file", http.StatusInternalServerError)
+		http.Error(w, "failed to process image", http.StatusInternalServerError)
 		return
 	}
-	defer dst.Close()
 
-	size, err := io.Copy(dst, file)
+	id := uuid.New().String()
+	filename := id + ".jpg"
+	err = os.WriteFile(filepath.Join(uploadsDir, filename), normalized, 0o644)
 	if err != nil {
 		http.Error(w, "failed to save file", http.StatusInternalServerError)
 		return
@@ -104,8 +102,8 @@ func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ID:        id,
 		Title:     title,
 		FilePath:  relativePath,
-		MimeType:  mimeType,
-		SizeBytes: size,
+		MimeType:  "image/jpeg",
+		SizeBytes: int64(len(normalized)),
 		Tags:      tags,
 	})
 	if err != nil {

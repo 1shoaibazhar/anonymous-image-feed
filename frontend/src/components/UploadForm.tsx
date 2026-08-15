@@ -48,7 +48,7 @@ export function UploadForm({ onUploadSuccess }: UploadFormProps) {
         <input
           id="file-input"
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
+          accept="image/jpeg,image/png,image/webp"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="hidden"
         />
