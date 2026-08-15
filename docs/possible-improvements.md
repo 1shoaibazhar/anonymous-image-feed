@@ -6,6 +6,8 @@ This was a small, scoped task, so I kept the implementation matched to that. Thi
 
 **Aspect-ratio preserving crop.** Covered in the architecture notes, uploads currently get squashed into a 1080x1080 square instead of being center-cropped. Cheap fix, just didn't get to it.
 
+**Queue uploads under load.** This was a small task, so upload processing just happens inline in the request handler. If it had to handle a real burst of traffic, the handler would save the raw file with `status = 'processing'` (the column is already there for this) and hand it off to a queue, with a worker doing the actual resize and marking it `ready`. The feed already only shows `ready` images, so no query changes needed. That same worker step is also the natural place to run the moderation and NSFW checks mentioned above, and things like a virus scan on the uploaded file, before ever flipping the status to `ready`.
+
 **Object storage instead of local disk.** Uploaded images live in a Docker volume on the backend host, no redundancy, and it blocks horizontal scaling. In production I'd use S3 with pre-signed upload URLs so files go straight from the browser to S3, and serve the feed straight from S3 (behind a CDN like CloudFront) instead of proxying reads through the backend too.
 
 **WebSocket fan-out across instances.** The live feed hub is a single in-memory map of connected clients. It works great with one backend instance and falls apart with more than one, clients on instance A never hear about uploads that land on instance B. Would need Redis pub/sub or similar to broadcast across instances.
