@@ -68,3 +68,8 @@ go test ./...
 cd frontend
 npm test
 ```
+
+## Docs
+
+- [docs/architecture.md](docs/architecture.md): design decisions and how the pieces fit together
+- [docs/possible-improvements.md](docs/possible-improvements.md): known gaps and what I'd add next if this was a proper production application

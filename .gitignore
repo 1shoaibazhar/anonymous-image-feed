@@ -10,7 +10,7 @@ frontend/dist/
 .env
 .env.local
 
-# Local upload storage (phase 1 stores files on disk, don't commit them)
+# Local upload storage
 backend/uploads/
 
 # OS
