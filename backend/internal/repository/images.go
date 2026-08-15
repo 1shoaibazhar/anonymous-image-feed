@@ -115,10 +115,7 @@ func (r *ImageRepository) ListImages(ctx context.Context, tags []string, after *
 		return nil, false, err
 	}
 
-	hasMore := len(images) > imagesPageSize
-	if hasMore {
-		images = images[:imagesPageSize]
-	}
+	images, hasMore := paginate(images, imagesPageSize)
 
 	if len(images) > 0 {
 		ids := make([]string, len(images))
@@ -129,16 +126,28 @@ func (r *ImageRepository) ListImages(ctx context.Context, tags []string, after *
 		if err != nil {
 			return nil, false, err
 		}
-		for i := range images {
-			imgTags := tagsByImage[images[i].ID]
-			if imgTags == nil {
-				imgTags = []string{}
-			}
-			images[i].Tags = imgTags
-		}
+		attachTags(images, tagsByImage)
 	}
 
 	return images, hasMore, nil
+}
+
+func paginate(images []Image, pageSize int) ([]Image, bool) {
+	hasMore := len(images) > pageSize
+	if hasMore {
+		images = images[:pageSize]
+	}
+	return images, hasMore
+}
+
+func attachTags(images []Image, tagsByImage map[string][]string) {
+	for i := range images {
+		tags := tagsByImage[images[i].ID]
+		if tags == nil {
+			tags = []string{}
+		}
+		images[i].Tags = tags
+	}
 }
 
 func (r *ImageRepository) queryImages(ctx context.Context, query string, args ...any) ([]Image, error) {
