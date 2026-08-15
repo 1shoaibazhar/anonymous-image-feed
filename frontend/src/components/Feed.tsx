@@ -10,17 +10,34 @@ interface FeedProps {
 
 export function Feed({ refreshKey, tags }: FeedProps) {
   const [images, setImages] = useState<ImageItem[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedImage, setSelectedImage] = useState<ImageItem | null>(null)
 
   useEffect(() => {
     setLoading(true)
     fetchImages(tags)
-      .then(setImages)
+      .then((page) => {
+        setImages(page.images)
+        setNextCursor(page.next_cursor)
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
   }, [refreshKey, tags])
+
+  function loadMore() {
+    if (!nextCursor || loadingMore) return
+    setLoadingMore(true)
+    fetchImages(tags, nextCursor)
+      .then((page) => {
+        setImages((prev) => [...prev, ...page.images])
+        setNextCursor(page.next_cursor)
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoadingMore(false))
+  }
 
   if (loading) {
     return <p className="text-center text-gray-500 mt-8">Loading...</p>
@@ -35,6 +52,7 @@ export function Feed({ refreshKey, tags }: FeedProps) {
   }
 
   return (
+    <div>
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4">
       {images.map((image) => (
         <div
@@ -76,6 +94,18 @@ export function Feed({ refreshKey, tags }: FeedProps) {
           </div>
         </Modal>
       )}
+    </div>
+    {nextCursor && (
+      <p className="text-center pb-8">
+        <button
+          onClick={loadMore}
+          disabled={loadingMore}
+          className="px-4 py-2 bg-gray-800 text-white rounded-lg disabled:opacity-50"
+        >
+          {loadingMore ? 'Loading...' : 'Load more'}
+        </button>
+      </p>
+    )}
     </div>
   )
 }

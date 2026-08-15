@@ -1,7 +1,9 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"sort"
 	"strings"
@@ -31,6 +33,32 @@ type imageResponse struct {
 	CreatedAt string   `json:"created_at"`
 }
 
+type imagesListResponse struct {
+	Images     []imageResponse `json:"images"`
+	NextCursor *string         `json:"next_cursor"`
+}
+
+func encodeCursor(c repository.Cursor) string {
+	raw := c.CreatedAt.Format(time.RFC3339Nano) + "|" + c.ID
+	return base64.URLEncoding.EncodeToString([]byte(raw))
+}
+
+func decodeCursor(s string) (*repository.Cursor, error) {
+	raw, err := base64.URLEncoding.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+	parts := strings.SplitN(string(raw), "|", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("malformed cursor")
+	}
+	createdAt, err := time.Parse(time.RFC3339Nano, parts[0])
+	if err != nil {
+		return nil, err
+	}
+	return &repository.Cursor{CreatedAt: createdAt, ID: parts[1]}, nil
+}
+
 func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 	tags := []string{}
 	if raw := r.URL.Query().Get("tags"); raw != "" {
@@ -42,28 +70,44 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	sort.Strings(tags)
 
-	cacheKey := "images:" + strings.Join(tags, ",")
+	cursorParam := r.URL.Query().Get("cursor")
+	var cursor *repository.Cursor
+	if cursorParam != "" {
+		decoded, err := decodeCursor(cursorParam)
+		if err != nil {
+			http.Error(w, "invalid cursor", http.StatusBadRequest)
+			return
+		}
+		cursor = decoded
+	}
+
+	cacheKey := "images:" + strings.Join(tags, ",") + ":" + cursorParam
 	if cached, err := h.rdb.Get(r.Context(), cacheKey).Result(); err == nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(cached))
 		return
 	}
 
-	images, err := h.repo.ListImages(r.Context(), tags)
+	images, hasMore, err := h.repo.ListImages(r.Context(), tags, cursor)
 	if err != nil {
 		http.Error(w, "failed to load images", http.StatusInternalServerError)
 		return
 	}
 
-	resp := make([]imageResponse, 0, len(images))
+	resp := imagesListResponse{Images: make([]imageResponse, 0, len(images))}
 	for _, img := range images {
-		resp = append(resp, imageResponse{
+		resp.Images = append(resp.Images, imageResponse{
 			ID:        img.ID,
 			Title:     img.Title,
 			Tags:      img.Tags,
 			URL:       img.FilePath,
 			CreatedAt: img.CreatedAt.Format(time.RFC3339),
 		})
+	}
+	if hasMore {
+		last := images[len(images)-1]
+		next := encodeCursor(repository.Cursor{CreatedAt: last.CreatedAt, ID: last.ID})
+		resp.NextCursor = &next
 	}
 
 	body, err := json.Marshal(resp)

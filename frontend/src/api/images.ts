@@ -1,9 +1,21 @@
-export const API_BASE_URL = 'http://localhost:8080'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 import type { ImageItem } from '../types/image'
 
-export async function fetchImages(tags: string[] = []): Promise<ImageItem[]> {
-  const query = tags.length > 0 ? `?tags=${tags.map(encodeURIComponent).join(',')}` : ''
+export interface ImagesPage {
+  images: ImageItem[]
+  next_cursor: string | null
+}
+
+export async function fetchImages(tags: string[] = [], cursor?: string): Promise<ImagesPage> {
+  const params: string[] = []
+  if (tags.length > 0) {
+    params.push(`tags=${tags.map(encodeURIComponent).join(',')}`)
+  }
+  if (cursor) {
+    params.push(`cursor=${encodeURIComponent(cursor)}`)
+  }
+  const query = params.length > 0 ? `?${params.join('&')}` : ''
   const response = await fetch(`${API_BASE_URL}/api/images${query}`)
   if (!response.ok) {
     throw new Error(`Failed to fetch images: ${response.status}`)

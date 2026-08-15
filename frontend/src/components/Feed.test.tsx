@@ -24,7 +24,7 @@ describe('Feed', () => {
   })
 
   it('shows an empty state when there are no images', async () => {
-    vi.spyOn(api, 'fetchImages').mockResolvedValue([])
+    vi.spyOn(api, 'fetchImages').mockResolvedValue({ images: [], next_cursor: null })
 
     render(<Feed refreshKey={0} tags={[]} />)
 
@@ -40,7 +40,7 @@ describe('Feed', () => {
   })
 
   it('renders the fetched images with their titles and tags', async () => {
-    vi.spyOn(api, 'fetchImages').mockResolvedValue(sampleImages)
+    vi.spyOn(api, 'fetchImages').mockResolvedValue({ images: sampleImages, next_cursor: null })
 
     render(<Feed refreshKey={0} tags={[]} />)
 
@@ -50,7 +50,7 @@ describe('Feed', () => {
   })
 
   it('opens a modal with the full title and tags when an image is clicked', async () => {
-    vi.spyOn(api, 'fetchImages').mockResolvedValue(sampleImages)
+    vi.spyOn(api, 'fetchImages').mockResolvedValue({ images: sampleImages, next_cursor: null })
     const user = userEvent.setup()
 
     render(<Feed refreshKey={0} tags={[]} />)
@@ -62,7 +62,7 @@ describe('Feed', () => {
   })
 
   it('refetches when refreshKey or tags change', async () => {
-    const fetchSpy = vi.spyOn(api, 'fetchImages').mockResolvedValue([])
+    const fetchSpy = vi.spyOn(api, 'fetchImages').mockResolvedValue({ images: [], next_cursor: null })
 
     const { rerender } = render(<Feed refreshKey={0} tags={[]} />)
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
@@ -73,5 +73,23 @@ describe('Feed', () => {
     rerender(<Feed refreshKey={1} tags={['cats']} />)
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(3))
     expect(fetchSpy).toHaveBeenLastCalledWith(['cats'])
+  })
+
+  it('shows a load more button when there is a next cursor, and fetches the next page on click', async () => {
+    const fetchSpy = vi
+      .spyOn(api, 'fetchImages')
+      .mockResolvedValueOnce({ images: [sampleImages[0]], next_cursor: 'cursor1' })
+      .mockResolvedValueOnce({ images: [sampleImages[1]], next_cursor: null })
+    const user = userEvent.setup()
+
+    render(<Feed refreshKey={0} tags={[]} />)
+    await screen.findByText('First')
+
+    const loadMoreButton = screen.getByRole('button', { name: 'Load more' })
+    await user.click(loadMoreButton)
+
+    expect(await screen.findByText('Second')).toBeInTheDocument()
+    expect(fetchSpy).toHaveBeenLastCalledWith([], 'cursor1')
+    expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument()
   })
 })

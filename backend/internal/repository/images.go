@@ -24,6 +24,11 @@ type NewImage struct {
 	Tags      []string
 }
 
+type Cursor struct {
+	CreatedAt time.Time
+	ID        string
+}
+
 type ImageRepository struct {
 	db *pgxpool.Pool
 }
@@ -32,26 +37,112 @@ func NewImageRepository(db *pgxpool.Pool) *ImageRepository {
 	return &ImageRepository{db: db}
 }
 
-func (r *ImageRepository) ListImages(ctx context.Context, tags []string) ([]Image, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT i.id::text, i.title, i.file_path, i.created_at,
-		       COALESCE(array_agg(t.name ORDER BY t.name) FILTER (WHERE t.name IS NOT NULL), '{}') AS tags
-		FROM images i
-		LEFT JOIN image_tags it ON it.image_id = i.id
-		LEFT JOIN tags t ON t.id = it.tag_id
-		WHERE i.status = 'ready'
-		  AND (
-		    cardinality($1::text[]) = 0
-		    OR EXISTS (
-		      SELECT 1 FROM image_tags it2
-		      JOIN tags t2 ON t2.id = it2.tag_id
-		      WHERE it2.image_id = i.id AND t2.name = ANY($1::text[])
-		    )
-		  )
-		GROUP BY i.id
-		ORDER BY i.created_at DESC
-		LIMIT 50
-	`, tags)
+const imagesPageSize = 50
+
+const listImagesQuery = `
+	SELECT i.id::text, i.title, i.file_path, i.created_at
+	FROM images i
+	WHERE i.status = 'ready'
+	  AND ($1 = false OR i.created_at < $2 OR (i.created_at = $2 AND i.id::text < $3))
+	ORDER BY i.created_at DESC, i.id::text DESC
+	LIMIT $4
+`
+
+const listImagesByTagQuery = `
+	SELECT i.id::text, i.title, i.file_path, i.created_at
+	FROM images i
+	WHERE i.status = 'ready'
+	  AND EXISTS (
+	    SELECT 1 FROM image_tags it
+	    JOIN tags t ON t.id = it.tag_id
+	    WHERE it.image_id = i.id AND t.name = ANY($1::text[])
+	  )
+	  AND ($2 = false OR i.created_at < $3 OR (i.created_at = $3 AND i.id::text < $4))
+	ORDER BY i.created_at DESC, i.id::text DESC
+	LIMIT $5
+`
+
+const tagsForImagesQuery = `
+	SELECT it.image_id::text, t.name
+	FROM tags t
+	JOIN image_tags it ON it.tag_id = t.id
+	WHERE it.image_id = ANY($1::uuid[])
+	ORDER BY it.image_id, t.name
+`
+
+const listAllTagsQuery = `
+	SELECT DISTINCT t.name
+	FROM tags t
+	JOIN image_tags it ON it.tag_id = t.id
+	JOIN images i ON i.id = it.image_id
+	WHERE i.status = 'ready'
+	ORDER BY t.name
+`
+
+const insertImageQuery = `
+	INSERT INTO images (id, title, file_path, mime_type, size_bytes, status)
+	VALUES ($1, $2, $3, $4, $5, 'ready')
+	RETURNING created_at
+`
+
+const upsertTagQuery = `
+	INSERT INTO tags (name) VALUES ($1)
+	ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+	RETURNING id
+`
+
+const insertImageTagQuery = `
+	INSERT INTO image_tags (image_id, tag_id) VALUES ($1, $2)
+`
+
+func (r *ImageRepository) ListImages(ctx context.Context, tags []string, after *Cursor) ([]Image, bool, error) {
+	hasCursor := after != nil
+	var afterCreatedAt time.Time
+	var afterID string
+	if after != nil {
+		afterCreatedAt = after.CreatedAt
+		afterID = after.ID
+	}
+
+	var images []Image
+	var err error
+	if len(tags) == 0 {
+		images, err = r.queryImages(ctx, listImagesQuery, hasCursor, afterCreatedAt, afterID, imagesPageSize+1)
+	} else {
+		images, err = r.queryImages(ctx, listImagesByTagQuery, tags, hasCursor, afterCreatedAt, afterID, imagesPageSize+1)
+	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	hasMore := len(images) > imagesPageSize
+	if hasMore {
+		images = images[:imagesPageSize]
+	}
+
+	if len(images) > 0 {
+		ids := make([]string, len(images))
+		for i, img := range images {
+			ids[i] = img.ID
+		}
+		tagsByImage, err := r.queryTagsForImages(ctx, ids)
+		if err != nil {
+			return nil, false, err
+		}
+		for i := range images {
+			imgTags := tagsByImage[images[i].ID]
+			if imgTags == nil {
+				imgTags = []string{}
+			}
+			images[i].Tags = imgTags
+		}
+	}
+
+	return images, hasMore, nil
+}
+
+func (r *ImageRepository) queryImages(ctx context.Context, query string, args ...any) ([]Image, error) {
+	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +151,7 @@ func (r *ImageRepository) ListImages(ctx context.Context, tags []string) ([]Imag
 	var images []Image
 	for rows.Next() {
 		var img Image
-		if err := rows.Scan(&img.ID, &img.Title, &img.FilePath, &img.CreatedAt, &img.Tags); err != nil {
+		if err := rows.Scan(&img.ID, &img.Title, &img.FilePath, &img.CreatedAt); err != nil {
 			return nil, err
 		}
 		images = append(images, img)
@@ -68,15 +159,26 @@ func (r *ImageRepository) ListImages(ctx context.Context, tags []string) ([]Imag
 	return images, rows.Err()
 }
 
+func (r *ImageRepository) queryTagsForImages(ctx context.Context, imageIDs []string) (map[string][]string, error) {
+	rows, err := r.db.Query(ctx, tagsForImagesQuery, imageIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[string][]string, len(imageIDs))
+	for rows.Next() {
+		var imageID, name string
+		if err := rows.Scan(&imageID, &name); err != nil {
+			return nil, err
+		}
+		result[imageID] = append(result[imageID], name)
+	}
+	return result, rows.Err()
+}
+
 func (r *ImageRepository) ListTags(ctx context.Context) ([]string, error) {
-	rows, err := r.db.Query(ctx, `
-		SELECT DISTINCT t.name
-		FROM tags t
-		JOIN image_tags it ON it.tag_id = t.id
-		JOIN images i ON i.id = it.image_id
-		WHERE i.status = 'ready'
-		ORDER BY t.name
-	`)
+	rows, err := r.db.Query(ctx, listAllTagsQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -101,29 +203,19 @@ func (r *ImageRepository) CreateImage(ctx context.Context, img NewImage) (time.T
 	defer tx.Rollback(ctx)
 
 	var createdAt time.Time
-	err = tx.QueryRow(ctx, `
-		INSERT INTO images (id, title, file_path, mime_type, size_bytes, status)
-		VALUES ($1, $2, $3, $4, $5, 'ready')
-		RETURNING created_at
-	`, img.ID, img.Title, img.FilePath, img.MimeType, img.SizeBytes).Scan(&createdAt)
+	err = tx.QueryRow(ctx, insertImageQuery,
+		img.ID, img.Title, img.FilePath, img.MimeType, img.SizeBytes).Scan(&createdAt)
 	if err != nil {
 		return time.Time{}, err
 	}
 
 	for _, tagName := range img.Tags {
 		var tagID int
-		err := tx.QueryRow(ctx, `
-			INSERT INTO tags (name) VALUES ($1)
-			ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-			RETURNING id
-		`, tagName).Scan(&tagID)
-		if err != nil {
+		if err := tx.QueryRow(ctx, upsertTagQuery, tagName).Scan(&tagID); err != nil {
 			return time.Time{}, err
 		}
 
-		if _, err := tx.Exec(ctx, `
-			INSERT INTO image_tags (image_id, tag_id) VALUES ($1, $2)
-		`, img.ID, tagID); err != nil {
+		if _, err := tx.Exec(ctx, insertImageTagQuery, img.ID, tagID); err != nil {
 			return time.Time{}, err
 		}
 	}

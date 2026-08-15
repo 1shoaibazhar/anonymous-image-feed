@@ -111,7 +111,7 @@ func (h *UploadHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.rdb.Del(r.Context(), "images:", "tags:all")
+	h.rdb.Del(r.Context(), "images::", "tags:all")
 
 	created := imageResponse{
 		ID:        id,

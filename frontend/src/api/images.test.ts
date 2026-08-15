@@ -15,22 +15,41 @@ describe('fetchImages', () => {
     vi.stubGlobal('fetch', vi.fn())
   })
 
-  it('requests images without a tags query when no tags are given', async () => {
-    const images = [{ id: '1', title: 'a', tags: [], url: '/uploads/a.jpg', created_at: 'now' }]
-    vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse(images))
+  it('requests images without a query when no tags or cursor are given', async () => {
+    const page = {
+      images: [{ id: '1', title: 'a', tags: [], url: '/uploads/a.jpg', created_at: 'now' }],
+      next_cursor: null,
+    }
+    vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse(page))
 
     const result = await fetchImages()
 
     expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/api/images`)
-    expect(result).toEqual(images)
+    expect(result).toEqual(page)
   })
 
   it('appends an encoded, comma-joined tags query when tags are given', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse([]))
+    vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse({ images: [], next_cursor: null }))
 
     await fetchImages(['cats', 'funny animals'])
 
     expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/api/images?tags=cats,funny%20animals`)
+  })
+
+  it('appends an encoded cursor query when a cursor is given', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse({ images: [], next_cursor: null }))
+
+    await fetchImages([], 'abc+def')
+
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/api/images?cursor=abc%2Bdef`)
+  })
+
+  it('combines tags and cursor queries when both are given', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(mockFetchResponse({ images: [], next_cursor: null }))
+
+    await fetchImages(['cats'], 'abc')
+
+    expect(fetch).toHaveBeenCalledWith(`${API_BASE_URL}/api/images?tags=cats&cursor=abc`)
   })
 
   it('throws when the response is not ok', async () => {
