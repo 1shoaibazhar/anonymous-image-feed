@@ -12,7 +12,7 @@ This was a small, scoped task, so I kept the implementation matched to that. Thi
 
 **Cache invalidation is approximate.** Explained in the architecture notes too, uploading only busts the cache for the default (untagged, first-page) view. Filtered/paginated views just age out of the 30 second TTL on their own. Fine for now, but a pattern-based Redis invalidation (or a version counter baked into the cache key) would make it exact instead of eventually consistent.
 
-**No thumbnails.** The feed grid shows the same full 1080x1080 JPEG that gets served in the lightbox view. A dedicated smaller thumbnail (say 300x300) for the grid would cut bandwidth noticeably, especially on the "load more" pagination where a dozen images load at once.
+**No thumbnails.** The feed grid shows the same full 1080x1080 JPEG that gets served in the lightbox view. A dedicated smaller thumbnail (say 300x300) for the grid would cut bandwidth noticeably, especially on infinite scroll where a dozen images load at once.
 
 **Duplicate detection.** Nothing stops the same image being uploaded five times under different titles. A perceptual hash or even a simple content hash check on upload would catch exact duplicates at least.
 

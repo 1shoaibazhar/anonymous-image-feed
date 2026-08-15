@@ -5,7 +5,7 @@ Anonymous image upload site with a live feed. React + TypeScript frontend, Go + 
 ## Features
 - Anonymous image uploads (jpeg, png, webp), normalized server side to a standard size and JPEG quality
 - Live feed updates over WebSocket when a new image is uploaded
-- Cursor based pagination and tag filtering on the image feed
+- Cursor based pagination with infinite scroll, and tag filtering, on the image feed
 - Redis backed response caching for the images and tags endpoints
 
 ## Structure

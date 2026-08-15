@@ -22,6 +22,8 @@ There are two indexes beyond the primary keys. `idx_images_created_at` on `image
 
 The image feed uses cursor pagination, `(created_at, id)` as a tuple, instead of `OFFSET`/`LIMIT` page numbers. With offset pagination, deep pages get slower as the offset grows because Postgres still has to scan and discard all the earlier rows. Keyset pagination avoids that, and it also plays nicer with a live feed, if a new image lands while you're scrolled down, offset-based paging would shift and could show you a duplicate or skip a row. The cursor is just `created_at + id` base64-encoded, `id` is the tiebreaker for rows with an identical timestamp.
 
+The same cursor is what powers infinite scroll on the frontend too, for a continuous feed closer to Instagram. An `IntersectionObserver` watches a sentinel element at the bottom of the grid and fetches the next page automatically once it scrolls into view, no backend changes needed, it just reuses the existing cursor pagination.
+
 ## Image normalization
 
 Every upload gets decoded, resized to a fixed 1080x1080, and re-encoded as JPEG at quality 85, regardless of the original format (jpeg/png/webp are all accepted in). This keeps the feed grid uniform and keeps storage and bandwidth predictable, instead of one person uploading a 40MB PNG and blowing up disk usage.
